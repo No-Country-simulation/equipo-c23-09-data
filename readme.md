@@ -19,7 +19,4 @@ pip install -r requirements.txt
 
 ## Agregar dependencias
 
-pip freeze >> requirements.txt
-
-- nota de uso:
-  Si no deseas sobrescribir el archivo y prefieres agregar las nuevas dependencias al final, puedes usar el operador de redirección >> como se utiliza en el ejemplo de arriba.
+pip freeze > requirements.txt
