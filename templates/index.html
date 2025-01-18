@@ -1,5 +1,21 @@
 {% extends 'base.html' %} {% block title %}Home{% endblock %} {% block content
 %}
-<h1 class="mt-5">Welcome to Flask with Bootstrap!</h1>
-<p>This is a basic setup to get you started.</p>
+
+<div class="card shadow p-4">
+  <h2 class="text-center mb-4">Video Scanner</h2>
+  <div class="video-container mb-3">
+    <video id="video" autoplay muted hidden></video>
+  </div>
+  <div class="mb-3">
+    <label for="fileInput" class="form-label">Upload a video:</label>
+    <input class="form-control" type="file" id="fileInput" accept="video/*" />
+  </div>
+  <div class="text-center">
+    <button id="startCamera" class="btn btn-primary">Activate Camera</button>
+    <button id="stopCamera" class="btn btn-danger ms-2" disabled>
+      Stop Camera
+    </button>
+  </div>
+</div>
+
 {% endblock %}
