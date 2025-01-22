@@ -27,6 +27,6 @@ Debido a limitaciones en el tamaño de archivo de GitHub, el modelo preentrenado
 
 **Descargar modelo**: [Enlace al modelo](https://drive.google.com/file/d/1YSl2AHMni0KBoiMDcMePk59ba8ISMoCR/view?usp=sharing)
 A su vez, tambien se deja disponible el enlace del dataset para entrenar su propio modelo.
-**Descargar dataset**: [Enlace al modelo] (https://www.kaggle.com/datasets/ayuraj/asl-dataset)
+**Descargar dataset**: [Enlace al modelo](https://www.kaggle.com/datasets/ayuraj/asl-dataset)
 
 Una vez descargado, mueve el archivo a la carpeta correspondiente en tu proyecto.
