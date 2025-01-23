@@ -4,6 +4,11 @@ import numpy as np
 from flask import Flask, request, render_template, redirect, url_for, jsonify, Response
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
+from tensorflow.keras.preprocessing.image import img_to_array, load_img
+import io
+
+# Establecer la variable de entorno para desactivar oneDNN
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 app = Flask(__name__)
 
@@ -16,6 +21,11 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Cargar el modelo
 model = load_model('model.keras')
+
+# Parámetros de entrada del modelo
+image_size = 200
+img_channel = 3
+n_classes = 36
 
 # Diccionario para mapear las clases
 categories = {
@@ -52,8 +62,9 @@ def predict():
     if file.filename == '':
         return "No selected image", 400
     if file:
-        img = image.load_img(file, target_size=(64, 64))
-        img_array = image.img_to_array(img)
+        img_bytes = file.read()
+        img = load_img(io.BytesIO(img_bytes), target_size=(image_size, image_size))
+        img_array = img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array = img_array / 255.0
 
@@ -65,20 +76,25 @@ def predict():
 # Ruta para capturar video en tiempo real
 def gen_frames():
     cap = cv2.VideoCapture(0)
+    predicted_text = ""
     while True:
         success, frame = cap.read()
         if not success:
             break
         else:
             # Procesar el frame
-            img = cv2.resize(frame, (64, 64))
-            img_array = image.img_to_array(img)
+            img = cv2.resize(frame, (image_size, image_size))
+            img_array = img_to_array(img)
             img_array = np.expand_dims(img_array, axis=0)
             img_array = img_array / 255.0
 
             prediction = model.predict(img_array)
             predicted_class = np.argmax(prediction, axis=1)
             label = categories[predicted_class[0]]
+
+            # Actualizar el texto predicho
+            if label not in predicted_text:
+                predicted_text += label
 
             # Dibujar el label en el frame
             cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -87,6 +103,7 @@ def gen_frames():
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            yield (b'data: ' + predicted_text.encode() + b'\r\n\r\n')
 
 @app.route('/video_feed')
 def video_feed():
