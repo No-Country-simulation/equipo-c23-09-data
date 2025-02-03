@@ -31,3 +31,5 @@ A su vez, tambien se deja disponible el enlace del dataset para entrenar su prop
 **Descargar dataset**: [Enlace al modelo](https://www.kaggle.com/datasets/ayuraj/asl-dataset)
 
 Una vez descargado, mueve el archivo a la carpeta correspondiente en tu proyecto.
+
+Modelo sigue enviando datos como si leyera algo. solo y o q manda al liveprediction. Ajustar esto. tambien que vaya armando oraciones.

@@ -6,8 +6,9 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
 import io
+import time
 
-# Establecer la variable de entorno para desactivar oneDNN
+# Establecer la variable de entorno para desactivar oneDNN_OPTS
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 app = Flask(__name__)
@@ -34,6 +35,16 @@ categories = {
     20: "k", 21: "l", 22: "m", 23: "n", 24: "o", 25: "p", 26: "q", 27: "r", 28: "s", 29: "t",
     30: "u", 31: "v", 32: "w", 33: "x", 34: "y", 35: "z",
 }
+
+# Variable de estado para controlar si la cámara está activa
+camera_active = False
+
+# Variable global para almacenar el texto predicho
+predicted_text = ""
+predicted_sentence = []
+
+# Tiempo de espera para considerar una letra finalizada (en segundos)
+WAIT_TIME = 3
 
 # Ruta para la página principal
 @app.route('/')
@@ -73,41 +84,72 @@ def predict():
 
         return jsonify({'class': categories[predicted_class[0]]})
 
-# Ruta para capturar video en tiempo real
-def gen_frames():
-    cap = cv2.VideoCapture(0)
+# Ruta para activar la cámara
+@app.route('/start_camera', methods=['POST'])
+def start_camera():
+    global camera_active, predicted_text, predicted_sentence
+    camera_active = True
     predicted_text = ""
-    while True:
-        success, frame = cap.read()
-        if not success:
-            break
-        else:
-            # Procesar el frame
-            img = cv2.resize(frame, (image_size, image_size))
-            img_array = img_to_array(img)
-            img_array = np.expand_dims(img_array, axis=0)
-            img_array = img_array / 255.0
+    predicted_sentence = []
+    return jsonify({'status': 'Camera activated'})
 
-            prediction = model.predict(img_array)
-            predicted_class = np.argmax(prediction, axis=1)
-            label = categories[predicted_class[0]]
+# Ruta para detener la cámara
+@app.route('/stop_camera', methods=['POST'])
+def stop_camera():
+    global camera_active, predicted_text, predicted_sentence
+    camera_active = False
+    predicted_text = ""
+    predicted_sentence = []
+    return jsonify({'status': 'Camera deactivated'})
 
-            # Actualizar el texto predicho
-            if label not in predicted_text:
-                predicted_text += label
+# Ruta para capturar video en tiempo real y enviar predicciones
+@app.route('/live_prediction')
+def live_prediction():
+    def gen_predictions():
+        global predicted_text, predicted_sentence
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        last_detection_time = time.time()
+        while camera_active:
+            success, frame = cap.read()
+            if not success:
+                break
+            else:
+                # Convertir el frame a un formato compatible
+                img_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
+                img = load_img(io.BytesIO(img_bytes), target_size=(image_size, image_size))
+                img_array = img_to_array(img)
+                img_array = np.expand_dims(img_array, axis=0)
+                img_array = img_array / 255.0
 
-            # Dibujar el label en el frame
-            cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                prediction = model.predict(img_array)
+                predicted_class = np.argmax(prediction, axis=1)
+                label = categories[predicted_class[0]]
 
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            yield (b'data: ' + predicted_text.encode() + b'\r\n\r\n')
+                # Si la confianza es menor al umbral, consideramos que no hay manos
+                if max(prediction[0]) < 0.1:
+                    if time.time() - last_detection_time > WAIT_TIME:
+                        predicted_text = ""
+                    last_detection_time = time.time()
+                else:
+                    # Actualizar el texto predicho
+                    if label not in predicted_text:
+                        predicted_text += label
+                        predicted_sentence.append(label)
+                    last_detection_time = time.time()
 
-@app.route('/video_feed')
-def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+                yield f"data: {' '.join(predicted_sentence)}\n\n"
+
+    return Response(gen_predictions(), mimetype='text/event-stream')
+
+# Ruta para eliminar la predicción
+@app.route('/clear_prediction', methods=['POST'])
+def clear_prediction():
+    global predicted_text, predicted_sentence
+    predicted_text = ""
+    predicted_sentence = []
+    return jsonify({'status': 'Prediction cleared'})
 
 if __name__ == '__main__':
     app.run(debug=True)

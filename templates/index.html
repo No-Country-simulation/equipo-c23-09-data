@@ -34,12 +34,9 @@
           <button id="stopCamera" class="btn btn-danger ms-2" disabled>
             Stop Camera
           </button>
-        </div>
-
-        <!-- Video en tiempo real -->
-        <h2 class="text-center mt-4">Live Video Feed</h2>
-        <div class="video-container mb-3">
-          <img src="{{ url_for('video_feed') }}" width="100%" height="auto" id="videoFeed"/>
+          <button id="clearPrediction" class="btn btn-warning ms-2" disabled>
+            Clear Prediction
+          </button>
         </div>
       </div>
     </div>
@@ -85,37 +82,60 @@
     });
   });
 
-  // Funcionalidad para activar y desactivar la cámara
+  // Funcionalidad para activar/desactivar la cámara
   const video = document.getElementById('video');
   const startCameraButton = document.getElementById('startCamera');
   const stopCameraButton = document.getElementById('stopCamera');
-
-  startCameraButton.addEventListener('click', async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    video.hidden = false;
-    startCameraButton.disabled = true;
-    stopCameraButton.disabled = false;
-  });
-
-  stopCameraButton.addEventListener('click', () => {
-    const stream = video.srcObject;
-    const tracks = stream.getTracks();
-    tracks.forEach(track => track.stop());
-    video.hidden = true;
-    startCameraButton.disabled = false;
-    stopCameraButton.disabled = true;
-  });
-
-  // Funcionalidad para mostrar las predicciones en tiempo real
-  const videoFeed = document.getElementById('videoFeed');
+  const clearPredictionButton = document.getElementById('clearPrediction');
   const predictedText = document.getElementById('predictedText');
 
-  videoFeed.addEventListener('load', function() {
-    const eventSource = new EventSource('/video_feed');
-    eventSource.onmessage = function(event) {
-      predictedText.innerText = event.data;
-    };
+  startCameraButton.addEventListener('click', async () => {
+    const response = await fetch('/start_camera', { method: 'POST' });
+    if (response.ok) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.hidden = false;
+      startCameraButton.disabled = true;
+      stopCameraButton.disabled = false;
+      clearPredictionButton.disabled = false;
+
+      // Iniciar la captura de predicciones en tiempo real
+      const eventSource = new EventSource('/live_prediction');
+      eventSource.onmessage = function(event) {
+        predictedText.innerText = event.data;
+      };
+    } else {
+      alert("Failed to activate camera.");
+    }
+  });
+
+  stopCameraButton.addEventListener('click', async () => {
+    const response = await fetch('/stop_camera', { method: 'POST' });
+    if (response.ok) {
+      const stream = video.srcObject;
+      const tracks = stream.getTracks();
+      tracks.forEach(track => track.stop());
+      video.hidden = true;
+      startCameraButton.disabled = false;
+      stopCameraButton.disabled = true;
+      clearPredictionButton.disabled = true;
+
+      // Detener la captura de predicciones en tiempo real
+      const eventSource = new EventSource('/live_prediction');
+      eventSource.close();
+      predictedText.innerText = "";
+    } else {
+      alert("Failed to deactivate camera.");
+    }
+  });
+
+  clearPredictionButton.addEventListener('click', async () => {
+    const response = await fetch('/clear_prediction', { method: 'POST' });
+    if (response.ok) {
+      predictedText.innerText = "";
+    } else {
+      alert("Failed to clear prediction.");
+    }
   });
 </script>
 
