@@ -1,3 +1,4 @@
+HAND-SPEAK - Mano que habla
 ## Instrucciones
 
 1. Activa el entorno virtual llamado _entorno_.
@@ -20,3 +21,15 @@ pip install -r requirements.txt
 ## Agregar dependencias
 
 pip freeze > requirements.txt
+
+# Modelo preentrenado
+
+Debido a limitaciones en el tamaño de archivo de GitHub, el modelo preentrenado se encuentra disponible para su descarga desde Google Drive.
+
+**Descargar modelo**: [Enlace al modelo](https://drive.google.com/file/d/1YSl2AHMni0KBoiMDcMePk59ba8ISMoCR/view?usp=sharing)
+A su vez, tambien se deja disponible el enlace del dataset para entrenar su propio modelo.
+**Descargar dataset**: [Enlace al modelo](https://www.kaggle.com/datasets/ayuraj/asl-dataset)
+
+Una vez descargado, mueve el archivo a la carpeta correspondiente en tu proyecto.
+
+Modelo sigue enviando datos como si leyera algo. solo y o q manda al liveprediction. Ajustar esto. tambien que vaya armando oraciones.

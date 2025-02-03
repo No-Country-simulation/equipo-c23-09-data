@@ -1,0 +1,7 @@
+# Ignorar archivos de modelo
+*.keras
+# Ignorar archivos específicos
+handsign_model.keras
+# Ignorar imagenes
+*.png
+*.jpg
