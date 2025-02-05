@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card shadow p-4">
+        <h2 class="text-center mb-4">Video Scanner and ASL Prediction</h2>
+
+        <!-- Formulario para subir el archivo de video -->
+        <div class="video-container mb-3">
+          <video id="video" autoplay muted hidden></video>
+        </div>
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="fileInput" class="form-label">Upload a video:</label>
+            <input
+              class="form-control"
+              type="file"
+              id="fileInput"
+              name="file"
+              accept="video/*"
+            />
+          </div>
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary">Upload</button>
+          </div>
+        </form>
+
+        <!-- Botones de control para la cámara -->
+        <div class="text-center mt-3">
+          <button id="startCamera" class="btn btn-primary">Activate Camera</button>
+          <button id="stopCamera" class="btn btn-danger ms-2" disabled>
+            Stop Camera
+          </button>
+          <button id="clearPrediction" class="btn btn-warning ms-2" disabled>
+            Clear Prediction
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow p-4">
+        <h2 class="text-center mb-4">ASL Sign Prediction</h2>
+        <form action="/predict" method="post" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="imageInput" class="form-label">Upload an image:</label>
+            <input
+              class="form-control"
+              type="file"
+              id="imageInput"
+              name="image"
+              accept="image/*"
+            />
+          </div>
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary">Predict</button>
+          </div>
+        </form>
+        <div id="result" class="text-center mt-3"></div>
+        <div id="livePrediction" class="text-center mt-3">
+          <h3>Live Prediction:</h3>
+          <p id="predictedText"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const response = await fetch(event.target.action, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      document.getElementById('result').innerText = `Predicted class: ${result.class}`;
+    });
+  });
+
+  // Funcionalidad para activar/desactivar la cámara
+  const video = document.getElementById('video');
+  const startCameraButton = document.getElementById('startCamera');
+  const stopCameraButton = document.getElementById('stopCamera');
+  const clearPredictionButton = document.getElementById('clearPrediction');
+  const predictedText = document.getElementById('predictedText');
+
+  startCameraButton.addEventListener('click', async () => {
+    const response = await fetch('/start_camera', { method: 'POST' });
+    if (response.ok) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.hidden = false;
+      startCameraButton.disabled = true;
+      stopCameraButton.disabled = false;
+      clearPredictionButton.disabled = false;
+
+      // Iniciar la captura de predicciones en tiempo real
+      const eventSource = new EventSource('/live_prediction');
+      eventSource.onmessage = function(event) {
+        predictedText.innerText = event.data;
+      };
+    } else {
+      alert("Failed to activate camera.");
+    }
+  });
+
+  stopCameraButton.addEventListener('click', async () => {
+    const response = await fetch('/stop_camera', { method: 'POST' });
+    if (response.ok) {
+      const stream = video.srcObject;
+      const tracks = stream.getTracks();
+      tracks.forEach(track => track.stop());
+      video.hidden = true;
+      startCameraButton.disabled = false;
+      stopCameraButton.disabled = true;
+      clearPredictionButton.disabled = true;
+
+      // Detener la captura de predicciones en tiempo real
+      const eventSource = new EventSource('/live_prediction');
+      eventSource.close();
+      predictedText.innerText = "";
+    } else {
+      alert("Failed to deactivate camera.");
+    }
+  });
+
+  clearPredictionButton.addEventListener('click', async () => {
+    const response = await fetch('/clear_prediction', { method: 'POST' });
+    if (response.ok) {
+      predictedText.innerText = "";
+    } else {
+      alert("Failed to clear prediction.");
+    }
+  });
+</script>
+
+{% endblock %}
