@@ -3,5 +3,5 @@
 # Ignorar archivos específicos
 handsign_model.keras
 # Ignorar imagenes
-*.png
+
 *.jpg
